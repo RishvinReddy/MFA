@@ -5,6 +5,7 @@ import biometricRoutes from './biometric.routes';
 import forensicRoutes from './forensic.routes';
 import mfaRoutes from './mfa.routes';
 import vaultRoutes from './vault.routes';
+import aiRoutes from './ai.routes';
 import { webAuthnRoutes } from './webauthn.routes';
 import { SystemDiagnosticsService } from '../services/systemDiagnostics.service';
 
@@ -12,6 +13,7 @@ const router = express.Router();
 
 router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
+router.use('/ai', aiRoutes);
 router.use('/webauthn', webAuthnRoutes);
 router.use('/biometric', biometricRoutes);
 router.use('/forensics', forensicRoutes);

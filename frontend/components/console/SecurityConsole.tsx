@@ -36,23 +36,6 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({ onLock }) => {
     const [user, setUser] = useState<any>(null);
     const [enrollment, setEnrollment] = useState<any>(null);
 
-    // AI Assistant State
-    const [showAiDrawer, setShowAiDrawer] = useState(false);
-    const [aiInput, setAiInput] = useState('');
-    const [aiMessages, setAiMessages] = useState<Array<{sender: 'USER' | 'AI', text: string}>>([
-        { sender: 'AI', text: 'BioShield AI initialized. I have full context of your telemetry. How can I assist?' }
-    ]);
-
-    const handleSendAi = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!aiInput.trim()) return;
-        setAiMessages(prev => [...prev, { sender: 'USER', text: aiInput }]);
-        setAiInput('');
-        setTimeout(() => {
-            setAiMessages(prev => [...prev, { sender: 'AI', text: 'Local LLM analysis is temporarily unavailable.' }]);
-        }, 600);
-    };
-
     // trustScore deliberately removed per Phase 18
 
     useEffect(() => {
@@ -143,47 +126,6 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({ onLock }) => {
 
     return (
         <div className="app-shell flex bg-[#F3F5F9] text-slate-900 font-sans selection:bg-blue-100 selection:text-blue-900">
-            {/* AI Assistant Drawer */}
-            {showAiDrawer && (
-                <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-96 bg-white border-l border-slate-200 shadow-2xl flex flex-col animate-fade-in">
-                    <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-slate-50">
-                        <div className="flex items-center space-x-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center">
-                                <Sparkles className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-sm text-slate-900 font-mono">Zero-Trust AI Assistant</h3>
-                                <p className="text-[10px] text-emerald-600 font-mono font-bold">● LOCAL TELEMETRY BOUND</p>
-                            </div>
-                        </div>
-                        <button onClick={() => setShowAiDrawer(false)} className="text-slate-400 hover:text-slate-700 text-lg">×</button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-xs">
-                        {aiMessages.map((msg, idx) => (
-                            <div key={idx} className={`flex flex-col ${msg.sender === 'USER' ? 'items-end' : 'items-start'}`}>
-                                <span className="text-[9px] text-slate-400 mb-0.5 px-1 font-bold">{msg.sender}</span>
-                                <div className={`p-3.5 rounded-2xl max-w-[85%] leading-relaxed ${msg.sender === 'USER' ? 'bg-blue-600 text-white rounded-tr-none shadow-sm' : 'bg-slate-100 border border-slate-200 text-slate-800 rounded-tl-none'}`}>
-                                    {msg.text}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <form onSubmit={handleSendAi} className="p-4 border-t border-slate-200 bg-slate-50 flex space-x-2">
-                        <input
-                            type="text"
-                            value={aiInput}
-                            onChange={(e) => setAiInput(e.target.value)}
-                            placeholder="Query trust score, vault, or risk logs..."
-                            className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-mono"
-                        />
-                        <button type="submit" className="p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-md shadow-blue-500/20">
-                            <Send className="w-4 h-4" />
-                        </button>
-                    </form>
-                </div>
-            )}
 
             {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
@@ -299,15 +241,6 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({ onLock }) => {
                         </div>
                     </div>
 
-                    <div className="flex items-center space-x-3">
-                        <button
-                            onClick={() => setShowAiDrawer(!showAiDrawer)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 border ${showAiDrawer ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200 hover:border-blue-300 hover:bg-blue-100/60'}`}
-                        >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>AI Security Assistant</span>
-                        </button>
-                    </div>
                 </header>
 
                 {/* Main View Area */}

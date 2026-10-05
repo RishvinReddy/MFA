@@ -11,8 +11,7 @@ import { SecurityConsole } from './components/console/SecurityConsole';
 import { BehavioralLogin } from './components/BehavioralLogin';
 import SystemBoot from './components/SystemBoot';
 import LaptopAuthLayout from './components/LaptopAuthLayout';
-import { Shield, MessageSquare, Settings, LogOut, ChevronRight } from 'lucide-react';
-import { chatWithSecurityBot } from './services/geminiService';
+import { Shield, Settings, LogOut, ChevronRight } from 'lucide-react';
 import { authFlowService } from './services/authFlowService';
 import { FinalizingVerification } from './components/FinalizingVerification';
 import ProfileManagement from './components/profiles/ProfileManagement';
@@ -27,6 +26,7 @@ import AuthContainer from './components/auth/AuthContainer';
 import FaceModalityPanel from './components/auth/FaceModalityPanel';
 import VoiceModalityPanel from './components/auth/VoiceModalityPanel';
 import MfaModalityPanel from './components/auth/MfaModalityPanel';
+import { GlobalSecurityAssistant } from './components/GlobalSecurityAssistant';
 
 
 const parseJwt = (token: string) => {
@@ -43,11 +43,6 @@ const MainApp: React.FC = () => {
     const [stage, setStage] = useState<AuthStage>(AuthStage.LOGIN);
     const [username, setUsername] = useState('');
     const [userId, setUserId] = useState('');
-
-    const [chatOpen, setChatOpen] = useState(false);
-    const [chatMsg, setChatMsg] = useState('');
-    const [chatHistory, setChatHistory] = useState<string[]>([]);
-    const [chatLoading, setChatLoading] = useState(false);
 
     const [stepUpState, setStepUpState] = useState<{isOpen: boolean, reason: string}>({isOpen: false, reason: ''});
     const navigate = useNavigate();
@@ -261,20 +256,6 @@ const MainApp: React.FC = () => {
         }
     };
 
-    const handleChatSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!chatMsg.trim()) return;
-
-        const newHistory = [...chatHistory, chatMsg];
-        setChatHistory(newHistory);
-        setChatMsg('');
-        setChatLoading(true);
-
-        const response = await chatWithSecurityBot(newHistory, chatMsg);
-        setChatHistory([...newHistory, response]);
-        setChatLoading(false);
-    };
-
     const StepIndicator = ({ current, total, label }: { current: number, total: number, label: string }) => (
         <div className="flex flex-col items-center justify-center mb-8 animate-fade-in">
             <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">
@@ -355,16 +336,6 @@ const MainApp: React.FC = () => {
                                 </button>
                             )}
 
-
-                            <button
-                                onClick={() => setChatOpen(!chatOpen)}
-                                className={`p-2 rounded-lg transition-all duration-300 relative ${chatOpen ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-500'}`}
-                                title="AI Security Assistant"
-                            >
-                                <MessageSquare className="w-4 h-4" />
-                                {!chatOpen && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white"></span>}
-                            </button>
-
                             {showLogout && isAuthenticated && (
                                 <>
                                     <div className="h-5 w-px bg-slate-200 mx-1"></div>
@@ -386,46 +357,6 @@ const MainApp: React.FC = () => {
                         {children}
                     </div>
                 </main>
-
-                {chatOpen && (
-                    <div className="fixed bottom-6 right-6 w-80 md:w-96 bg-white/80 backdrop-blur-xl border border-white/50 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden z-50 h-[500px] animate-fade-in">
-                        <div className="bg-white/50 p-4 border-b border-slate-100 flex justify-between items-center">
-                            <div className="flex items-center">
-                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 mr-2 shadow-[0_0_10px_rgba(16,185,129,0.4)]"></div>
-                                <div>
-                                    <div className="font-bold text-sm text-slate-800">Security Assistant</div>
-                                    <div className="text-[10px] text-slate-500">Gemini 1.5 Flash</div>
-                                </div>
-                            </div>
-                            <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-slate-800 transition-colors bg-white rounded-full p-1 hover:shadow-sm">×</button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            {chatHistory.length === 0 && (
-                                <div className="flex flex-col items-center justify-center h-full text-center opacity-60">
-                                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-3 text-blue-400">
-                                        <Shield className="w-8 h-8" />
-                                    </div>
-                                    <p className="text-xs text-slate-500 font-medium">How can I help you today?</p>
-                                </div>
-                            )}
-                            {chatHistory.map((msg, i) => (
-                                <div key={i} className={`flex ${i % 2 === 0 ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] p-3.5 text-sm shadow-sm ${i % 2 === 0 ? 'bg-blue-600 text-white rounded-2xl rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-2xl rounded-tl-sm'}`}>
-                                        {msg}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        <form onSubmit={handleChatSubmit} className="p-3 bg-white/50 border-t border-slate-100">
-                            <input
-                                value={chatMsg}
-                                onChange={(e) => setChatMsg(e.target.value)}
-                                placeholder="Type a message..."
-                                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm placeholder:text-slate-400"
-                            />
-                        </form>
-                    </div>
-                )}
 
                 <StepUpModal 
                     isOpen={stepUpState.isOpen}
@@ -584,6 +515,7 @@ const App: React.FC = () => {
     return (
         <Router>
             <MainApp />
+            <GlobalSecurityAssistant />
         </Router>
     );
 };
