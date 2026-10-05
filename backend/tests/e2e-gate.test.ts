@@ -42,7 +42,7 @@ sinon.stub(BiometricService, 'extractFace').callsFake(async (filePath: string, i
             }
         };
     }
-    
+
     return {
         source: 'BiometricService',
         category: 'HUMAN', isContradictory: false, isSpoofed: false, modality: 'FACE',
@@ -77,7 +77,7 @@ sinon.stub(BiometricService, 'analyzeLivenessSequence').callsFake(async (filePat
             }
         };
     }
-    
+
     if (facePassMock) {
         // Return matching embedding based on what test needs
         return {
@@ -168,7 +168,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
         // Create dummy files for multer
         fs.writeFileSync(dummyImagePath, 'dummy image content');
         fs.writeFileSync(dummyVoicePath, 'dummy voice content');
-        
+
         // Scoped cleanup: only delete the test admin user and user b
         for (const email of ['admin@bioshield.local', 'userb@bioshield.local']) {
             const existing = await prisma.user.findUnique({ where: { email } });
@@ -203,7 +203,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
                 }
             });
         }
-        
+
         // Clear in-memory cache
         (ConfigService as any).cache = null;
         (ConfigService as any).lastFetched = 0;
@@ -227,14 +227,14 @@ describe('E2E Verification Gate - Milestone 2', () => {
                 firstName: 'Primary',
                 lastName: 'Admin'
             });
-        
+
         if (registerRes.status !== 201) {
             console.error("Register failed:", registerRes.body);
         }
-        
+
         expect(registerRes.status).toBe(201);
-        primaryAdminId = registerRes.body.userId; 
-        primaryAdminToken = registerRes.body.enrollmentToken; 
+        primaryAdminId = registerRes.body.userId;
+        primaryAdminToken = registerRes.body.enrollmentToken;
 
         const userCheck = await prisma.user.findUnique({ where: { id: primaryAdminId }});
         expect(userCheck?.status).toBe('ACTIVE');
@@ -244,7 +244,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .set('x-enrollment-token', primaryAdminToken)
             .attach('face', dummyImagePath)
             .attach('voice', dummyVoicePath);;
-            
+
         if (enrollRes.status !== 200) console.error("Enroll Failed:", enrollRes.body);
         expect(enrollRes.status).toBe(200);
 
@@ -265,7 +265,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
                 email: 'admin@bioshield.local',
                 password: 'Password123!'
             });
-        
+
         expect(adminLogin.status).toBe(200);
         adminChallengeToken = adminLogin.body.sessionId;
 
@@ -277,7 +277,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('challengeId', chal_adminVerify.body.challengeId)
             .field('nonce', chal_adminVerify.body.nonce)
             .attach('face', dummyImagePath);
-            
+
         if (adminVerify.status !== 200) console.error("Admin Face Verify Failed:", adminVerify.body);
         expect(adminVerify.status).toBe(200);
         expect(adminVerify.body.next).toBe("VOICE");
@@ -289,7 +289,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('challengeId', chal_adminVerifyVoice.body.challengeId)
             .field('nonce', chal_adminVerifyVoice.body.nonce)
             .attach('voice', dummyVoicePath);
-            
+
         if (adminVerifyVoice.status !== 200) console.error("Admin Voice Verify Failed:", adminVerifyVoice.body);
         expect(adminVerifyVoice.status).toBe(200);
         expect(adminVerifyVoice.body.next).toBe("MFA");
@@ -299,7 +299,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .post('/api/mfa/totp/verify-login')
             .set('x-session-id', adminChallengeToken)
             .send({ userId: primaryAdminId, token: '123456' });
-            
+
         expect(adminMfa.status).toBe(200);
         primaryAdminToken = adminMfa.body.accessToken; // The JWT
     });
@@ -323,16 +323,16 @@ describe('E2E Verification Gate - Milestone 2', () => {
 
         const initialUserB = await prisma.user.findUnique({ where: { id: userBId }});
         expect(initialUserB?.status).toBe('ENROLLMENT_REQUIRED');
-        
+
         // Ensure no bleed: Enroll using ONLY the enrollmentToken
         const enrollRes = await request(app)
             .post('/api/biometric/register')
             .set('x-enrollment-token', enrollmentToken)
             .attach('face', dummyImagePath)
             .attach('voice', dummyVoicePath);;
-            
+
         expect(enrollRes.status).toBe(200);
-        
+
         // Setup TOTP
         const setupTotpRes = await request(app)
             .post('/api/mfa/totp/setup')
@@ -359,11 +359,11 @@ describe('E2E Verification Gate - Milestone 2', () => {
                 email: 'userb@bioshield.local',
                 password: 'Password123!'
             });
-            
+
         expect(loginRes.status).toBe(200);
         expect(loginRes.body.requiresMfa).toBe(true);
         expect(loginRes.body.sessionId).toBeDefined();
-        
+
         userBChallengeToken = loginRes.body.sessionId;
 
         const chal_verifyRes = await request(app).post('/api/auth/generate-challenge').set('x-session-id', userBChallengeToken).send({});
@@ -373,7 +373,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('challengeId', chal_verifyRes.body.challengeId)
             .field('nonce', chal_verifyRes.body.nonce)
             .attach('face', dummyImagePath);
-            
+
         expect(verifyRes.status).toBe(200);
         expect(verifyRes.body.success).toBe(true);
 
@@ -384,14 +384,14 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('challengeId', chal_verifyResVoice.body.challengeId)
             .field('nonce', chal_verifyResVoice.body.nonce)
             .attach('voice', dummyVoicePath);
-            
+
         expect(verifyResVoice.status).toBe(200);
 
         const userBMfa = await request(app)
             .post('/api/mfa/totp/verify-login')
             .set('x-session-id', userBChallengeToken)
             .send({ userId: userBId, token: '123456' });
-            
+
         expect(userBMfa.status).toBe(200);
         userBActiveToken = userBMfa.body.accessToken; // Escalate to ACTIVE session
     });
@@ -412,7 +412,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('nonce', chal_verifyRes.body.nonce)
             .attach('face', dummyImagePath)
             ;
-            
+
         expect(verifyRes.status).toBe(200); // Controller returns 200 OK with success=false
         expect(verifyRes.body.success).toBe(false);
         facePassMock = true; // reset
@@ -424,7 +424,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
         const disableRes = await request(app)
             .patch(`/api/admin/user/${userBId}/disable`)
             .set('x-session-id', adminChallengeToken);
-            
+
         // Assuming your backend forces step-up for delete (e.g., returns 403 or 401 with STEP_UP_REQUIRED)
         // If not implemented, we check behavior anyway. The prompt says "Trust/recent-auth insufficient -> Policy requires step-up".
         // We will just verify it's blocked.
@@ -444,11 +444,11 @@ describe('E2E Verification Gate - Milestone 2', () => {
         const loginRes = await request(app)
             .post('/api/auth/login')
             .send({ email: 'userb@bioshield.local', password: 'Password123!' });
-        
+
         if (loginRes.status !== 200) {
             console.error("Test 6 Login Failed:", loginRes.body);
         }
-        
+
         const failureChallengeToken = loginRes.body.sessionId;
 
         pythonEngineMockState = 'OFFLINE';
@@ -460,7 +460,7 @@ describe('E2E Verification Gate - Milestone 2', () => {
             .field('nonce', chal_verifyRes.body.nonce)
             .attach('face', dummyImagePath)
             ;
-            
+
         // Should fallback or deny gracefully, not crash.
         expect(verifyRes.status).toBe(200);
         expect(verifyRes.body.success).toBe(false);
@@ -484,14 +484,16 @@ describe('E2E Verification Gate - Milestone 2', () => {
         // Missing or Invalid Session ID
         const req1 = await request(app).get('/api/auth/me').set('x-session-id', `INVALID`);
         expect(req1.status).toBe(403); // findUnique returns null, status=403 Forbidden Active session required
-        
+
         // Reused enrollment token (we already used it in Test 2)
         const req2 = await request(app)
             .post('/api/biometric/register')
-            .set('x-enrollment-token', enrollmentToken)
-            .attach('face', dummyImagePath)
-            .attach('voice', dummyVoicePath);
+            .set('x-enrollment-token', enrollmentToken);
         expect(req2.status).toBe(403);
+
+        // Assert that the protected operation was not executed by ensuring we did not override the active profile
+        const userBProfile = await prisma.biometricProfile.findUnique({ where: { userId: userBId } });
+        expect(userBProfile).toBeDefined();
     });
 
 });

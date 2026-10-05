@@ -154,7 +154,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({ onLock }) => {
 
                         <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-mono font-bold">
                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span>● SYSTEM PROTECTED</span>
+                            <span>● {user ? `AUTHENTICATED: ${user.email.toUpperCase()}` : 'AUTHENTICATING...'}</span>
                         </div>
                     </div>
 

@@ -55,34 +55,38 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
                 const { verifyToken } = require('../authUtils');
                 const decoded = verifyToken(token);
                 if (decoded && decoded.id) {
-                    userId = decoded.id;
-                    authState = 'FULL_AUTHENTICATION';
+                    if (sessionId) {
+                        const session = await prisma.authSession.findUnique({ where: { id: sessionId } });
+                        if (session && session.isActive) {
+                            if (session.status === 'ACTIVE') {
+                                userId = session.userId;
+                                authState = 'FULL_AUTHENTICATION';
+                                sessionContext = { status: session.status, isActive: session.isActive };
+                            } else {
+                                const allowedIntermediateStates = ['CHALLENGE_REQUIRED', 'FACE_VERIFIED', 'VOICE_VERIFIED', 'RESTRICTED', 'MFA_REQUIRED', 'STEP_UP_REQUIRED'];
+                                if (allowedIntermediateStates.includes(session.status)) {
+                                    userId = session.userId;
+                                    authState = 'INTERMEDIATE_AUTHENTICATION';
+                                    sessionContext = { status: session.status, isActive: session.isActive };
+                                }
+                            }
+                        }
+                    } else {
+                        userId = decoded.id;
+                        authState = 'FULL_AUTHENTICATION';
+                    }
                 }
             } catch (err) {
                 // Invalid token
             }
         }
 
-        if (!userId && sessionId) {
-            // Check for intermediate authentication state
-            const session = await prisma.authSession.findUnique({ where: { id: sessionId } });
-            if (session) {
-                userId = session.userId;
-                authState = 'INTERMEDIATE_AUTHENTICATION';
-                sessionContext = {
-                    status: session.status,
-                    isActive: session.isActive
-                };
-            }
-        }
-
         if (!userId && enrollmentToken) {
-            // Very basic enrollment token validation logic based on your setup.
-            // Assuming enrollment token matches user ID for now or we query user by it.
-            // We check if it exists in DB.
-            const user = await prisma.user.findFirst({ where: { id: enrollmentToken } });
-            if (user) {
-                userId = user.id;
+            const crypto = require('crypto');
+            const hash = crypto.createHash('sha256').update(enrollmentToken).digest('hex');
+            const tokenRecord = await prisma.enrollmentToken.findUnique({ where: { tokenHash: hash } });
+            if (tokenRecord && tokenRecord.expiresAt > new Date() && !tokenRecord.usedAt) {
+                userId = tokenRecord.userId;
                 authState = 'ENROLLMENT';
             }
         }
@@ -94,7 +98,6 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
                     faceEnrolled: true,
                     voiceEnrolled: true,
                     passwordEnrolled: true,
-                    mfaConfigured: true,
                     recoveryConfigured: true
                 }
             });
@@ -104,40 +107,65 @@ export const chat = async (req: Request, res: Response, next: NextFunction) => {
                 orderBy: { createdAt: 'desc' },
                 take: 10
             });
-            
-            recentAuditEvents = logs.map(l => ({
-                action: l.action,
-                createdAt: l.createdAt,
-                status: l.action.includes('FAILED') || l.action.includes('BLOCKED') ? 'FAILED' : 'SUCCESS'
-            }));
+
+            recentAuditEvents = logs.map(l => {
+                const meta = l.metadata as any;
+                return {
+                    action: l.action,
+                    createdAt: l.createdAt,
+                    status: meta?.status || (l.action.includes('FAILED') || l.action.includes('BLOCKED') ? 'FAILED' : 'SUCCESS')
+                };
+            });
         }
 
-        // 2. Gather Host Context
-        const hostContext = {
-            system: await SystemDiagnosticsService.runDiagnostics(),
-            defender: await DefenderService.getThreatReport()
+        const safePageContext = {
+            page: typeof pageContext?.page === 'string' ? pageContext.page.slice(0, 100) : 'unknown',
+            stage: typeof pageContext?.stage === 'string' ? pageContext.stage.slice(0, 50) : 'unknown'
         };
 
-        // 3. Build Safe Context for LLM
-        const safeContext = {
+        const safeContext: any = {
             authenticationState: authState,
-            pageContext: pageContext || { page: 'unknown', stage: 'unknown' },
-            hostTelemetry: {
-                secureBoot: hostContext.system.secureBootEnabled ? 'VERIFIED' : 'DISABLED',
-                tpm: hostContext.system.tpmPresent ? 'VERIFIED' : 'UNKNOWN',
-                defenderStatus: hostContext.defender.healthStatus === 'HEALTHY' ? 'VERIFIED' : 'WARNING',
-                activeThreats: hostContext.defender.activeThreats
-            },
+            pageContext: safePageContext,
             enrollmentState: enrollmentContext,
             sessionState: sessionContext,
             recentEvents: recentAuditEvents
         };
 
-        // Validate history length
-        let safeHistory = Array.isArray(history) ? history : [];
-        if (safeHistory.length > 20) {
-            safeHistory = safeHistory.slice(-20);
+        if (authState !== 'PRE-AUTHENTICATION') {
+            // 2. Gather Host Context only if authenticated or enrolling
+            const systemDiagnostics = await SystemDiagnosticsService.runDiagnostics();
+            safeContext.hostTelemetry = {
+                secureBoot: systemDiagnostics.security.secureBoot.status,
+                secureBootConfidence: systemDiagnostics.security.secureBoot.confidence,
+                tpm: systemDiagnostics.security.tpm.status,
+                tpmConfidence: systemDiagnostics.security.tpm.confidence,
+                firewall: systemDiagnostics.security.firewall.status,
+                firewallConfidence: systemDiagnostics.security.firewall.confidence,
+                defender: {
+                    status: systemDiagnostics.security.defender.status,
+                    threatCount: systemDiagnostics.security.defender.threats.length
+                },
+                diskEncryption: systemDiagnostics.security.diskEncryption.status
+            };
+        } else {
+            safeContext.hostTelemetry = { status: 'HIDDEN_PRE_AUTH' };
         }
+
+        // Validate and sanitize history length and roles
+        let safeHistory = Array.isArray(history)
+            ? history
+                .filter(
+                    (item: any) =>
+                        item &&
+                        item.sender === 'USER' &&
+                        typeof item.text === 'string'
+                )
+                .slice(-20)
+                .map((item: any) => ({
+                    sender: 'USER',
+                    text: item.text.slice(0, 2000)
+                }))
+            : [];
 
         // 4. Generate Response
         const responseText = await localAssistantService.generateChatResponse(message, safeHistory, safeContext);

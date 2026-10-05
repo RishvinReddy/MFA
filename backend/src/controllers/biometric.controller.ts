@@ -54,20 +54,20 @@ export const registerBiometric = async (req: Request, res: Response) => {
         const body = req.body;
 
         const updateData: any = {};
-        
+
         let faceEnrolled = false;
         let voiceEnrolled = false;
 
         // 1. Enroll Face
         if (files['face']?.[0]) {
             const faceResult = await BiometricService.extractFace(files['face'][0].path, true);
-            
+
             if (faceResult.status !== 'PASS' || !faceResult.metadata?.rawEmbedding) {
                 const specificError = faceResult.metadata?.reason || (faceResult as any).reason || "Face enrollment failed";
-                return res.status(400).json({ 
-                    success: false, 
-                    message: specificError, 
-                    evidence: faceResult 
+                return res.status(400).json({
+                    success: false,
+                    message: specificError,
+                    evidence: faceResult
                 });
             }
 
@@ -81,13 +81,13 @@ export const registerBiometric = async (req: Request, res: Response) => {
         // 2. Enroll Voice
         if (files['voice']?.[0]) {
             const voiceResult = await BiometricService.extractVoice(files['voice'][0].path);
-            
+
             if (voiceResult.status !== 'PASS' || !voiceResult.metadata?.rawEmbedding) {
                 const specificError = voiceResult.metadata?.reason || (voiceResult as any).reason || "Voice enrollment failed";
-                return res.status(400).json({ 
-                    success: false, 
-                    message: specificError, 
-                    evidence: voiceResult 
+                return res.status(400).json({
+                    success: false,
+                    message: specificError,
+                    evidence: voiceResult
                 });
             }
 
@@ -127,9 +127,9 @@ export const registerBiometric = async (req: Request, res: Response) => {
                 }
             });
         }
-        
-        res.json({ 
-            success: true, 
+
+        res.json({
+            success: true,
             message: "Biometrics registered successfully",
             sampleCount: 1
         });
@@ -144,7 +144,7 @@ export const validateVoiceSample = async (req: Request, res: Response) => {
     try {
         let userId = (req as any).user?.id;
         const enrollmentToken = req.headers['x-enrollment-token'] as string;
-        
+
         if (enrollmentToken) {
             const hash = crypto.createHash('sha256').update(enrollmentToken).digest('hex');
             const tokenRecord = await prisma.enrollmentToken.findFirst({
@@ -158,7 +158,7 @@ export const validateVoiceSample = async (req: Request, res: Response) => {
             console.error(`[validateVoiceSample Debug] Missing challengeId (${challengeId}) or nonce (${nonce})`);
             return res.status(400).json({ success: false, message: "Missing challenge phrase context." });
         }
-        
+
         let targetPhrase = "";
         try {
             const verifyChallengeResult = await ChallengeService.verifyAndConsumeChallenge(challengeId, nonce, undefined, userId);
@@ -181,12 +181,12 @@ export const validateVoiceSample = async (req: Request, res: Response) => {
             console.error(`[validateVoiceSample Debug] Extract voice failed. Status: ${voiceResult.status}, Embedding present: ${!!voiceResult.metadata?.rawEmbedding}`);
             return res.status(400).json({ success: false, message: "VOICE_EMBEDDING_INVALID" });
         }
-        
+
         const transcript = voiceResult.metadata.normalizedText;
         if (!transcript || transcript.trim().length === 0) {
             return res.status(400).json({ success: false, message: "VOICE_SPEECH_NOT_DETECTED" });
         }
-        
+
         if (!fuzzyPhraseMatch(targetPhrase, transcript)) {
             return res.status(400).json({ success: false, message: "VOICE_PHRASE_MISMATCH" });
         }
@@ -256,8 +256,8 @@ export const finalizeVoiceEnrollment = async (req: Request, res: Response) => {
 
         // If similarity to the group centroid is suspiciously low, reject it as an outlier
         if (minSim < 0.60) {
-            return res.status(400).json({ 
-                success: false, 
+            return res.status(400).json({
+                success: false,
                 message: "A voice sample varied too much from the others. Please record it again clearly.",
                 outlierIndex
             });
@@ -312,7 +312,7 @@ export const verifyBiometric = async (req: Request, res: Response) => {
 
         const profile = await prisma.biometricProfile.findUnique({ where: { userId } });
         if (!profile) {
-            return res.status(400).json({ success: false, message: "Biometric profile not found" });
+            return res.status(404).json({ success: false, message: "Biometric profile not found" });
         }
 
         const evidences: NormalizedEvidence[] = [];
@@ -323,28 +323,28 @@ export const verifyBiometric = async (req: Request, res: Response) => {
             const requestId = (req as any).headers['x-request-id'] || `FACE-VERIFY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
             const t0 = Date.now();
             let tChallenge = 0, tPythonStart = 0, tPythonEnd = 0, tDecryptStart = 0, tDecryptEnd = 0, tTotal = 0;
-            
+
             logger.info(`[FACE_VERIFY_START] ${requestId}`);
-            
+
             const challengeId = req.body.challengeId;
             const nonce = req.body.nonce;
-            
+
             if (!challengeId || !nonce) {
                 return res.status(400).json({ success: false, message: "Missing challengeId or nonce for liveness verification" });
             }
-            
+
             try {
                 const verifyResult = await ChallengeService.verifyAndConsumeChallenge(challengeId, nonce, sessionId);
                 tChallenge = Date.now();
                 const sequence = verifyResult.sequence;
                 const filePaths = files['face'].map(f => f.path);
-                
+
                 logger.info(`[FACE_VERIFY_NODE_TO_PYTHON] ${requestId}`);
                 tPythonStart = Date.now();
                 const faceResult = await BiometricService.analyzeLivenessSequence(filePaths, sequence, requestId);
                 tPythonEnd = Date.now();
                 logger.info(`[FACE_VERIFY_NODE_RESPONSE] ${requestId}`);
-                
+
                 if (faceResult.status === 'PASS') {
                     if (!profile || !profile.faceTemplate) {
                         faceResult.status = 'FAIL';
@@ -364,17 +364,17 @@ export const verifyBiometric = async (req: Request, res: Response) => {
                             const storedTemplate = JSON.parse(CryptoService.decryptTemplate(profile.faceTemplate));
                             const similarity = cosineSimilarity(faceResult.metadata.rawEmbedding, storedTemplate);
                             tDecryptEnd = Date.now();
-                            
+
                             const envThreshold = process.env.FACE_SIMILARITY_THRESHOLD;
                             const threshold = envThreshold ? parseFloat(envThreshold) : 0.50;
-                            
+
                             logger.info(`[Biometric Verification] Cosine similarity: ${similarity.toFixed(4)} (Threshold: ${threshold.toFixed(2)})`);
-                            
+
                             // Pass similarity score in metadata and directly on faceResult for frontend mapping
                             if (!faceResult.metadata) faceResult.metadata = {};
                             (faceResult.metadata as any).similarityScore = similarity;
                             (faceResult as any).similarityScore = similarity;
-                            
+
                             if (similarity >= threshold) {
                                 faceResult.status = 'PASS';
                                 faceResult.confidence = similarity;
@@ -394,15 +394,15 @@ export const verifyBiometric = async (req: Request, res: Response) => {
                 } else {
                     (faceResult as any).similarityScore = 0;
                 }
-                
+
                 // Clean up embedding before sending evidence back
                 delete faceResult.metadata?.rawEmbedding;
                 evidences.push(faceResult);
-                
+
                 filePaths.forEach(p => {
                     if (fs.existsSync(p)) fs.unlinkSync(p);
                 });
-                
+
                 tTotal = Date.now();
                 logger.info(`FACE_VERIFY_TIMING { requestId: "${requestId}", controllerMs: ${Date.now() - t0}, challengeMs: ${tChallenge - t0}, pythonMs: ${tPythonEnd - tPythonStart}, decryptAndSimMs: ${tDecryptEnd - tDecryptStart}, totalMs: ${tTotal - t0} }`);
                 logger.info(`[FACE_VERIFY_END] ${requestId}`);
@@ -443,32 +443,32 @@ export const verifyBiometric = async (req: Request, res: Response) => {
 
                 // Extract live embedding
                 const voiceResult = await BiometricService.extractVoice(files['voice'][0].path);
-                
+
                 if (voiceResult.status === 'PASS' && voiceResult.metadata?.rawEmbedding) {
                     const liveEmbedding = voiceResult.metadata.rawEmbedding;
                     if (!Array.isArray(liveEmbedding) || liveEmbedding.length !== storedTemplate.length) {
                         throw new Error("Voice embedding dimension mismatch");
                     }
-                    
+
                     const similarity = cosineSimilarity(liveEmbedding, storedTemplate);
-                    
+
                     const envThreshold = process.env.VOICE_SIMILARITY_THRESHOLD;
                     // Pilot threshold calibrated empirically on the current 5-speaker, 30-recording dataset.
                     // The previous 0.94 threshold was incompatible with the observed ECAPA similarity distribution in this calibration dataset. The maximum genuine similarity observed was 0.7998.
-                    const threshold = envThreshold ? parseFloat(envThreshold) : 0.40; 
-                    
+                    const threshold = envThreshold ? parseFloat(envThreshold) : 0.40;
+
                     const m = voiceResult.metadata;
                     logger.info(`[Biometric Verification] Voice similarity: ${similarity.toFixed(4)} (Threshold: ${threshold.toFixed(2)}) | Phrase: "${targetPhrase}" | Audio: ${m?.totalDuration?.toFixed(2)}s (Speech: ${m?.speechDuration?.toFixed(2)}s, Ratio: ${m?.speechRatio?.toFixed(2)})`);
-                    
+
                     if (!voiceResult.metadata) voiceResult.metadata = {};
-                    
+
                     let phraseMatched = false;
                     if (typeof voiceResult.metadata.normalizedText === 'string') {
                         if (fuzzyPhraseMatch(targetPhrase, voiceResult.metadata.normalizedText)) {
                             phraseMatched = true;
                         }
                     }
-                    
+
                     // Phase 4: Threshold AND phraseMatch applied
                     if (similarity >= threshold && phraseMatched) {
                         voiceResult.status = 'PASS';
@@ -543,8 +543,8 @@ export const verifyBiometric = async (req: Request, res: Response) => {
         let currentStatus = updatedSession?.status || (biometricMatchPassed ? 'ACTIVE' : 'CHALLENGE_REQUIRED');
 
         // EXPLICIT STATE SYNCHRONIZATION
-        // If biometricMatchPassed is true, but the PolicyEngine didn't upgrade the status (e.g., due to low 
-        // confidence scores on test images keeping the state at CHALLENGE_REQUIRED), we force the session state 
+        // If biometricMatchPassed is true, but the PolicyEngine didn't upgrade the status (e.g., due to low
+        // confidence scores on test images keeping the state at CHALLENGE_REQUIRED), we force the session state
         // progression here to align with the frontend's expectation, preserving the biometric boundary check.
         if (biometricMatchPassed && sessionId && currentStatus !== 'LOCKED' && currentStatus !== 'RESTRICTED') {
             let forcedStatus = currentStatus;
@@ -604,7 +604,7 @@ export const verifyBiometric = async (req: Request, res: Response) => {
                 lockout: false
             });
         }
-        
+
         let nextFactor = 'MFA';
         if (decision?.requiredFactors?.length > 0) {
             nextFactor = decision.requiredFactors[0];

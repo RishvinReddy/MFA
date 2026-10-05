@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Activity, Layers, HardDrive, Clock, CheckCircle2, 
-    AlertTriangle, Shield, Cpu, RefreshCw, Search, 
+import {
+    Activity, Layers, HardDrive, Clock, CheckCircle2,
+    AlertTriangle, Shield, Cpu, RefreshCw, Search,
 } from 'lucide-react';
 import { adminApi } from '../../services/adminApi';
 
@@ -35,7 +35,7 @@ export const ContinuousSecurityView: React.FC<ContinuousSecurityViewProps> = ({ 
                 time: new Date(log.createdAt).toLocaleString(),
                 category: log.action.split('_')[0] || 'SYSTEM',
                 event: log.action,
-                status: 'VERIFIED', // can map from metadata if needed
+                status: 'LOGGED', // can map from metadata if needed
                 risk: 'LOW',
                 details: JSON.stringify(log.metadata || {})
             }));
@@ -137,12 +137,12 @@ export const ContinuousSecurityView: React.FC<ContinuousSecurityViewProps> = ({ 
                     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-200 pb-4">
                             <div>
-                                <h2 className="text-sm font-bold text-slate-900 font-mono">REAL-TIME TRUST & RISK DECISION PIPELINE</h2>
-                                <p className="text-xs text-slate-500">Continuous scoring engine aggregating factors every 500 milliseconds.</p>
+                                <h2 className="text-sm font-bold text-slate-900 font-mono">DEVICE SECURITY EVIDENCE</h2>
+                                <p className="text-xs text-slate-500">Current state of hardware and OS-level security telemetry.</p>
                             </div>
                             <div className="flex items-center space-x-3 bg-slate-50 border border-slate-200 px-4 py-2 rounded-xl font-mono text-xs">
                                 <span className="text-slate-500 font-bold">STATUS:</span>
-                                <span className="text-emerald-600 font-bold text-base">VERIFIED</span>
+                                <span className="text-emerald-600 font-bold text-base">LOGGED</span>
                                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                             </div>
                         </div>
@@ -172,11 +172,11 @@ export const ContinuousSecurityView: React.FC<ContinuousSecurityViewProps> = ({ 
 
                             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2 flex flex-col justify-between">
                                 <div>
-                                    <div className="text-[10px] font-mono font-extrabold text-emerald-700 uppercase">FINAL DECISION</div>
-                                    <div className="font-extrabold text-sm text-slate-900 mt-1">VERIFIED</div>
-                                    <div className="text-[11px] text-emerald-800 mt-1">Based on local hardware security telemetry.</div>
+                                    <div className="text-[10px] font-mono font-extrabold text-emerald-700 uppercase">EVIDENCE STATUS</div>
+                                    <div className="font-extrabold text-sm text-slate-900 mt-1">LOGGED</div>
+                                    <div className="text-[11px] text-emerald-800 mt-1">Based on available system diagnostic data.</div>
                                 </div>
-                                <div className="text-right font-mono text-xs font-extrabold text-emerald-700">STATUS: ACTIVE</div>
+                                <div className="text-right font-mono text-xs font-extrabold text-emerald-700">STATUS: TRACKED</div>
                             </div>
                         </div>
                     </div>

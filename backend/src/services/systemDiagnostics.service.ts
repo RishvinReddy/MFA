@@ -64,7 +64,8 @@ export class SystemDiagnosticsService {
         addLog('INIT', 'SYSTEM', 'Inspecting native Windows host environment...');
 
         // 1. Device / OS Telemetry
-        const osName = `Windows 11 (Build ${os.release()})`;
+        const platform = os.platform();
+        const osName = platform === 'win32' ? `Windows (Kernel ${os.release()})` : `${platform} (Kernel ${os.release()})`;
         const arch = os.arch();
         const hostname = os.hostname();
         const cpus = os.cpus();
@@ -76,7 +77,7 @@ export class SystemDiagnosticsService {
         let secureBootStatus = 'Unknown';
         let secureBootConfidence: 'verified' | 'unverified' = 'unverified';
         const regOutput = execSafe(`powershell -Command "Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\SecureBoot\\State' -Name 'UEFISecureBootEnabled' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty UEFISecureBootEnabled"`);
-        
+
         if (regOutput === '1') {
             secureBootStatus = 'Verified';
             secureBootConfidence = 'verified';
@@ -131,14 +132,14 @@ export class SystemDiagnosticsService {
         const fwOutput = execSafe(`powershell -Command "Get-NetFirewallProfile -ErrorAction SilentlyContinue | Select-Object Name, Enabled | ConvertTo-Json -Compress"`);
         if (fwOutput && fwOutput !== 'null' && fwOutput !== '') {
             try {
-                const profiles = JSON.parse(fwOutput);
-                if (Array.isArray(profiles)) {
-                    fwDetails = profiles.reduce((acc, p) => ({ ...acc, [p.Name]: p.Enabled === 1 || p.Enabled === true }), {});
-                    const allEnabled = profiles.every(p => p.Enabled === 1 || p.Enabled === true);
-                    fwStatus = allEnabled ? 'Enabled' : 'Partially Enabled / Disabled';
-                    fwConfidence = 'verified';
-                    addLog(allEnabled ? 'OK' : 'WARN', 'SECURITY', `Firewall Profiles: ${fwStatus}`);
-                }
+                let profiles = JSON.parse(fwOutput);
+                if (!Array.isArray(profiles)) profiles = [profiles];
+
+                fwDetails = profiles.reduce((acc: any, p: any) => ({ ...acc, [p.Name]: p.Enabled === 1 || p.Enabled === true }), {});
+                const allEnabled = profiles.every((p: any) => p.Enabled === 1 || p.Enabled === true);
+                fwStatus = allEnabled ? 'Enabled' : 'Partially Enabled / Disabled';
+                fwConfidence = 'verified';
+                addLog(allEnabled ? 'OK' : 'WARN', 'SECURITY', `Firewall Profiles: ${fwStatus}`);
             } catch (e) {
                 addLog('WARN', 'SECURITY', 'Firewall query parsing failed');
             }
@@ -150,29 +151,26 @@ export class SystemDiagnosticsService {
         // 6. Disk Encryption
         let diskStatus = 'Unknown';
         let diskConfidence: 'verified' | 'unverified' = 'unverified';
-        let diskDetails = {};
-        const bitLockerOutput = execSafe(`powershell -Command "manage-bde -status -ErrorAction SilentlyContinue"`);
-        if (!bitLockerOutput) {
+        let diskDetails: any = {};
+        const bitLockerOutput = execSafe(`powershell -Command "Get-BitLockerVolume -ErrorAction SilentlyContinue | Select-Object MountPoint, VolumeStatus, ProtectionStatus | ConvertTo-Json -Compress"`);
+
+        if (bitLockerOutput && bitLockerOutput !== 'null' && bitLockerOutput !== '') {
+            try {
+                let volumes = JSON.parse(bitLockerOutput);
+                if (!Array.isArray(volumes)) volumes = [volumes]; // Handle single volume
+
+                diskDetails = { volumes };
+                const allProtected = volumes.every((v: any) => v.ProtectionStatus === 1 || v.ProtectionStatus === 'On');
+
+                diskStatus = allProtected ? 'Protected' : 'Unprotected';
+                diskConfidence = 'verified';
+                addLog(allProtected ? 'OK' : 'WARN', 'STORAGE', `Disk Encryption: ${diskStatus}`);
+            } catch (e) {
+                addLog('WARN', 'STORAGE', 'Disk Encryption query parsing failed');
+            }
+        } else {
             diskDetails = { reason: 'Access Denied or Command Failed' };
             addLog('UNKNOWN', 'STORAGE', 'Disk Encryption status requires elevation');
-        } else if (bitLockerOutput.includes('ERROR:')) {
-            diskDetails = { reason: 'Access Denied' };
-            addLog('UNKNOWN', 'STORAGE', 'Disk Encryption status requires elevation');
-        } else {
-            // Very rudimentary check for manage-bde output
-            if (bitLockerOutput.includes('Fully Encrypted')) {
-                diskStatus = 'Protected';
-                diskConfidence = 'verified';
-                addLog('OK', 'STORAGE', 'Disk Encryption active');
-            } else if (bitLockerOutput.includes('Fully Decrypted')) {
-                diskStatus = 'Unprotected';
-                diskConfidence = 'verified';
-                addLog('WARN', 'STORAGE', 'Disk Encryption inactive');
-            } else {
-                diskStatus = 'Status retrieved but undetermined';
-                diskConfidence = 'verified';
-                addLog('WARN', 'STORAGE', 'Disk Encryption status undetermined from manage-bde');
-            }
         }
         const diskEncryption = createComponent(diskStatus, 'Windows Volume Encryption API', diskConfidence, diskDetails);
 
@@ -185,12 +183,12 @@ export class SystemDiagnosticsService {
                 const pkgBuffer = fs.readFileSync(pkgPath);
                 appHash = crypto.createHash('sha256').update(pkgBuffer).digest('hex').slice(0, 16);
                 appConfidence = 'verified';
-                addLog('OK', 'INTEGRITY', `Application Hash Verified (SHA-256)`);
+                addLog('OK', 'INTEGRITY', `Application Hash Measured (SHA-256)`);
             }
         } catch (e) {
             addLog('FAIL', 'INTEGRITY', 'Could not read package.json for integrity hash');
         }
-        const appIntegrity = createComponent(appHash !== 'unknown' ? 'Verified' : 'Error', 'Node.js File System Hash', appConfidence, { sha256: appHash, target: 'package.json' });
+        const appIntegrity = createComponent(appHash !== 'unknown' ? 'MEASURED' : 'Error', 'Node.js File System Hash', appConfidence, { sha256: appHash, target: 'package.json' });
 
         return {
             device: {
@@ -199,7 +197,7 @@ export class SystemDiagnosticsService {
                 hostname,
                 cpuModel,
                 uptimeHours,
-                bootMode: 'UEFI'
+                bootMode: 'Unknown (unverified)'
             },
             security: {
                 secureBoot,

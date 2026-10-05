@@ -10,7 +10,8 @@ export const GlobalSecurityAssistant: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isAvailable, setIsAvailable] = useState(true);
     const [isPollingHealth, setIsPollingHealth] = useState(false);
-    
+    const [failedRequest, setFailedRequest] = useState<{text: string, history: AssistantMessage[]} | null>(null);
+
     const location = useLocation();
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -33,39 +34,72 @@ export const GlobalSecurityAssistant: React.FC = () => {
         }
     }, [messages, isLoading]);
 
-    const handleSend = async () => {
-        if (!input.trim() || !isAvailable) return;
-
-        const userMsg: AssistantMessage = { sender: 'USER', text: input.trim(), timestamp: Date.now() };
-        setMessages(prev => [...prev, userMsg]);
-        setInput('');
+    const sendRequest = async (userMsgText: string, currentHistory: AssistantMessage[]) => {
         setIsLoading(true);
-
+        setFailedRequest(null);
         try {
             const pageContext = {
                 page: location.pathname,
                 stage: 'UNKNOWN'
             };
-            
-            const res = await chatWithAssistant(userMsg.text, messages, pageContext);
+
+            const historyWithoutLatest = currentHistory.slice(0, currentHistory.length - 1);
+
+            const res = await chatWithAssistant(userMsgText, historyWithoutLatest, pageContext);
             setMessages(prev => [...prev, { sender: 'AI', text: res.message, timestamp: Date.now() }]);
         } catch (err: any) {
-            if (err.response && err.response.status === 503) {
+            let errorText = 'An error occurred while communicating with the assistant.';
+            const status = err.response?.status;
+
+            if (status === 401 || status === 403) {
+                errorText = 'Insufficient security context to process this request.';
+            } else if (status === 429) {
+                errorText = 'Rate limited. Please try again later.';
+            } else if (status === 503) {
                 setIsAvailable(false);
-                setMessages(prev => [...prev, { sender: 'AI', text: 'Local AI service is offline.', timestamp: Date.now() }]);
-            } else {
-                setMessages(prev => [...prev, { sender: 'AI', text: 'An error occurred while communicating with the assistant.', timestamp: Date.now() }]);
+                errorText = 'Local AI service is offline.';
+            } else if (status === 500) {
+                errorText = 'Internal system failure.';
             }
+
+            setMessages(prev => [...prev, { sender: 'AI', text: errorText, timestamp: Date.now() }]);
+            setFailedRequest({ text: userMsgText, history: currentHistory });
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSend = async () => {
+        if (!input.trim() || !isAvailable || isLoading) return;
+
+        const userMsg: AssistantMessage = { sender: 'USER', text: input.trim(), timestamp: Date.now() };
+        const newHistory = [...messages, userMsg];
+        setMessages(newHistory);
+        setInput('');
+
+        await sendRequest(userMsg.text, newHistory);
+    };
+
+    const retryLastMessage = async () => {
+        if (isLoading || !failedRequest) return;
+
+        setIsPollingHealth(true);
+        const health = await checkAssistantHealth();
+        const isNowAvailable = health.status === 'AVAILABLE';
+        setIsAvailable(isNowAvailable);
+        setIsPollingHealth(false);
+
+        if (!isNowAvailable) return;
+
+        setMessages(failedRequest.history);
+        await sendRequest(failedRequest.text, failedRequest.history);
     };
 
     return (
         <>
             {/* Launcher */}
             {!isOpen && (
-                <button 
+                <button
                     onClick={() => setIsOpen(true)}
                     className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-transform hover:scale-105 flex items-center gap-2"
                 >
@@ -78,7 +112,7 @@ export const GlobalSecurityAssistant: React.FC = () => {
 
             {/* Assistant Drawer */}
             <div className={`fixed top-0 right-0 h-[100dvh] w-[400px] bg-slate-900/95 backdrop-blur-md border-l border-slate-800 shadow-2xl transition-transform duration-300 z-50 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                
+
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-slate-800/50 bg-slate-900">
                     <div className="flex flex-col">
@@ -109,10 +143,10 @@ export const GlobalSecurityAssistant: React.FC = () => {
                     {messages.length === 0 && (
                         <div className="text-center text-slate-500 mt-10">
                             <Bot size={48} className="mx-auto mb-4 opacity-20" />
-                            <p>BioShield AI is available locally. Security context is bound to current session state.</p>
+                            <p>BioShield AI is available locally. Security context adapts to your current authentication state.</p>
                         </div>
                     )}
-                    
+
                     {messages.map((msg, i) => (
                         <div key={i} className={`flex ${msg.sender === 'USER' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[85%] rounded-xl p-3 ${msg.sender === 'USER' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-300 border border-slate-700/50'} shadow-sm`}>
@@ -123,7 +157,7 @@ export const GlobalSecurityAssistant: React.FC = () => {
                             </div>
                         </div>
                     ))}
-                    
+
                     {isLoading && (
                         <div className="flex justify-start">
                             <div className="max-w-[85%] rounded-xl p-3 bg-slate-800 text-slate-300 border border-slate-700/50 flex items-center gap-2">
@@ -133,10 +167,10 @@ export const GlobalSecurityAssistant: React.FC = () => {
                         </div>
                     )}
 
-                    {!isAvailable && messages.length > 0 && messages[messages.length-1].sender === 'USER' && (
+                    {!isAvailable && failedRequest && (
                         <div className="flex justify-center mt-4">
-                             <button onClick={handleSend} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-semibold text-slate-300 flex items-center gap-2 transition-colors">
-                                 <RefreshCw size={14} /> Retry
+                             <button onClick={retryLastMessage} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs font-semibold text-slate-300 flex items-center gap-2 transition-colors">
+                                 <RefreshCw size={14} className={isPollingHealth ? 'animate-spin' : ''} /> Retry
                              </button>
                         </div>
                     )}
@@ -159,7 +193,7 @@ export const GlobalSecurityAssistant: React.FC = () => {
                             className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-[46px] min-h-[46px] max-h-[120px] disabled:opacity-50 font-mono"
                             rows={1}
                         />
-                        <button 
+                        <button
                             onClick={handleSend}
                             disabled={!input.trim() || !isAvailable || isLoading}
                             className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-800 disabled:text-slate-500 text-white rounded-xl w-[46px] h-[46px] flex items-center justify-center transition-colors flex-shrink-0"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    ShieldCheck, Activity, HardDrive, Lock, 
-    ArrowUpRight, AlertTriangle, CheckCircle2, 
+import {
+    ShieldCheck, Activity, HardDrive, Lock,
+    ArrowUpRight, AlertTriangle, CheckCircle2,
     Clock, Smartphone, Laptop, RefreshCw, Eye,
     Cpu, Key, Database, ChevronRight
 } from 'lucide-react';
@@ -26,7 +26,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                     time: new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     event: log.action,
                     factor: log.action.split('_')[0] || 'SYSTEM',
-                    status: 'VERIFIED',
+                    status: 'LOGGED',
                     risk: 'LOW'
                 }));
                 setRecentLogs(mapped);
@@ -56,14 +56,14 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto relative z-10">
-                    <button 
+                    <button
                         onClick={() => onNavigate('BIOMETRICS')}
                         className="px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-blue-500/20 flex items-center justify-center space-x-2"
                     >
                         <span>Manage Biometrics</span>
                         <ArrowUpRight className="w-4 h-4" />
                     </button>
-                    <button 
+                    <button
                         onClick={() => onNavigate('VAULT')}
                         className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs transition-all border border-slate-200 shadow-sm flex items-center justify-center space-x-2"
                     >
@@ -75,7 +75,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
 
             {/* 4 Core Domain Summary Boxes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div 
+                <div
                     onClick={() => onNavigate('BIOMETRICS')}
                     className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
                 >
@@ -99,7 +99,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                     </div>
                 </div>
 
-                <div 
+                <div
                     onClick={() => onNavigate('TRUST_RISK')}
                     className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
                 >
@@ -108,19 +108,19 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                             <Activity className="w-6 h-6" />
                         </div>
                         <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-mono font-bold">
-                            INDEX: ACTIVE
+                            INDEX: COMPUTED
                         </span>
                     </div>
                     <div>
                         <div className="text-xs font-bold text-slate-500 uppercase font-mono">CONTINUOUS TRUST</div>
-                        <div className="text-xl font-extrabold text-slate-900 mt-1">VERIFIED</div>
+                        <div className="text-xl font-extrabold text-slate-900 mt-1">NOMINAL</div>
                         <p className="text-xs text-slate-500 mt-1">
                             Behavioral match nominal.
                         </p>
                     </div>
                 </div>
 
-                <div 
+                <div
                     onClick={() => onNavigate('DEVICE_SEC')}
                     className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
                 >
@@ -141,7 +141,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                     </div>
                 </div>
 
-                <div 
+                <div
                     onClick={() => onNavigate('VAULT')}
                     className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all cursor-pointer group flex flex-col justify-between"
                 >
@@ -173,7 +173,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                             </h3>
                             <p className="text-xs text-slate-500 mt-0.5">Real-time cryptographic and behavioral audit trail.</p>
                         </div>
-                        <button 
+                        <button
                             onClick={() => onNavigate('ACTIVITY')}
                             className="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center space-x-1"
                         >
@@ -210,7 +210,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({ telemetry, user, enr
                             <Key className="w-4 h-4 text-indigo-600" />
                             <span>QUICK MANAGEMENT</span>
                         </h3>
-                        
+
                         <div className="space-y-2">
                             <button
                                 onClick={() => onNavigate('AUTH_POLICY')}
