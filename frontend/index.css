@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-shell {
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.auth-page {
+  width: 100%;
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 0;
+  background-color: #f8fafc;
+}
+
+.auth-shell {
+  width: 100vw;
+  height: 100dvh;
+  display: grid;
+  grid-template-columns: 25% 75%;
+  overflow: hidden;
+  border-radius: 0;
+  background: white;
+  box-shadow: none;
+  border: none;
+}
+
+.auth-left,
+.auth-right {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.profile-list {
+  min-height: 0;
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+/* Custom Scrollbar for a premium native feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+code, .font-mono {
+  font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+/* Soft Grid Background */
+.bg-grid-pattern {
+  background-image: linear-gradient(to right, #f1f5f9 1px, transparent 1px),
+                    linear-gradient(to bottom, #f1f5f9 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: linear-gradient(to bottom, transparent, black, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+}
+
+.scan-line {
+  position: absolute;
+  width: 100%;
+  height: 2px;
+  background: #3b82f6;
+  box-shadow: 0 0 10px #3b82f6, 0 0 20px #3b82f6;
+  animation: scan 2s linear infinite;
+  z-index: 10;
+  opacity: 0.5;
+}
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.5; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Clean HUD Corners */
+.hud-corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-color: rgba(59, 130, 246, 0.4);
+  border-style: solid;
+  transition: all 0.3s ease;
+}
+.hud-tl { top: 16px; left: 16px; border-width: 2px 0 0 2px; border-top-left-radius: 8px; }
+.hud-tr { top: 16px; right: 16px; border-width: 2px 2px 0 0; border-top-right-radius: 8px; }
+.hud-bl { bottom: 16px; left: 16px; border-width: 0 0 2px 2px; border-bottom-left-radius: 8px; }
+.hud-br { bottom: 16px; right: 16px; border-width: 0 2px 2px 0; border-bottom-right-radius: 8px; }
+
+/* Glassmorphism Utilities */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}

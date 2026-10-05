@@ -1,0 +1,35 @@
+{
+  "name": "bioshield-mfa-2025",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "cmd /c start-all.bat",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "stop": "cmd /c stop-all.bat",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
+  },
+  "dependencies": {
+    "react-dom": "^19.2.0",
+    "@google/genai": "^1.30.0",
+    "recharts": "^3.4.1",
+    "react": "^19.2.0",
+    "lucide-react": "^0.554.0",
+    "express": "^5.2.1",
+    "crypto": "^1.0.1",
+    "buffer": "^6.0.3",
+    "pg": "^8.16.3",
+    "dotenv": "^17.2.3",
+    "multer": "^2.0.2",
+    "body-parser": "^2.2.1",
+    "@aws-sdk/client-kms": "^3.940.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

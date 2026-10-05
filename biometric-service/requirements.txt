@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+python-multipart
+numpy
+opencv-python
+# deepface  # Temporarily disabled due to Python version incompatibility
+# tensorflow # Temporarily disabled
+# tf-keras # Temporarily disabled
+# librosa # Temporarily disabled if it causes issues, but usually fine
+insightface==0.7.3
+onnxruntime==1.24.2

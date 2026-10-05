@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.pnpm-store
+.npm
+
+# Build
+dist/
+build/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# OS
+Thumbs.db
+
+# Project Specific
+backend/db/
+backend/prisma.config.ts
+APi.txt
+metadata.json
+auth_flows.md # User requested to keep, but typically artifacts are ignored or docs folder? User said keep auth_flows.md in project folder. We'll leave it unignored for now. 
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.db
+
+# Temp
+scratch/
+temp_repo/
+voice_calibration/
+voice_calibration.zip
+
+biometric-service/librispeech_data/

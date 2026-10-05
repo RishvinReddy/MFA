@@ -1,0 +1,82 @@
+
+openapi: 3.0.3
+info:
+  title: BioShield MFA Backend
+  version: 1.0.0
+servers:
+  - url: https://api.example.com
+paths:
+  /enroll:
+    post:
+      summary: Enroll biometric asset
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                modality:
+                  type: string
+                  enum: [face, voice, palm, behavioral]
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        '201':
+          description: Created
+  /verify:
+    post:
+      summary: Verify biometric probe
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                modality:
+                  type: string
+                file:
+                  type: string
+                  format: binary
+                metadata:
+                  type: string
+      responses:
+        '200':
+          description: Verified or not; body contains score and decision
+  /revoke:
+    post:
+      summary: Revoke biometric templates for user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: string
+                modality:
+                  type: string
+      responses:
+        '200':
+          description: Revoked
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

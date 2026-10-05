@@ -1,0 +1,47 @@
+[
+  {
+    "scenario": "A - NORMAL",
+    "currentBytes": 582,
+    "compactBytes": 151,
+    "currentLatency": 15000,
+    "compactLatency": 14037,
+    "currentZod": false,
+    "compactZod": true
+  },
+  {
+    "scenario": "B - SUSPICIOUS",
+    "currentBytes": 716,
+    "compactBytes": 308,
+    "currentLatency": 15000,
+    "compactLatency": 15000,
+    "currentZod": false,
+    "compactZod": false
+  },
+  {
+    "scenario": "C - CONTRADICTORY",
+    "currentBytes": 523,
+    "compactBytes": 235,
+    "currentLatency": 15000,
+    "compactLatency": 15000,
+    "currentZod": false,
+    "compactZod": false
+  },
+  {
+    "scenario": "D - PROMPT INJECTION",
+    "currentBytes": 484,
+    "compactBytes": 288,
+    "currentLatency": 15000,
+    "compactLatency": 15000,
+    "currentZod": false,
+    "compactZod": false
+  },
+  {
+    "scenario": "E - PROHIBITED ACTION",
+    "currentBytes": 403,
+    "compactBytes": 185,
+    "currentLatency": 15000,
+    "compactLatency": 15000,
+    "currentZod": false,
+    "compactZod": false
+  }
+]

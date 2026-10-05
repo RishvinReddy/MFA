@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  fullName     String?
+  passwordHash String
+  role         Role     @default(USER)
+  emailVerified Boolean @default(false)
+  mfaEnabled   Boolean  @default(true)
+  status       AccountStatus @default(ENROLLMENT_REQUIRED)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Secure Registration Fields
+  mfaSecretEnc    String?
+  failedAttempts  Int      @default(0)
+  lockedUntil     DateTime?
+  currentChallenge String?
+
+  totpSecret     TotpSecret?
+  webauthnCreds  WebAuthnCredential[]
+  sessions       AuthSession[]
+  refreshTokens  RefreshToken[]
+  auditLogs      AuditLog[]
+  securityEvents SecurityEvent[]
+  trustEvents    TrustEvent[]
+  biometricProfile BiometricProfile?
+  behavioralProfile BehavioralProfile?
+
+  // Biometric Lockout
+  biometricAttempts Int       @default(0)
+  biometricLockedUntil DateTime?
+
+  enrollmentTokens EnrollmentToken[]
+  enrollmentState  EnrollmentState?
+  livenessChallenges LivenessChallenge[]
+}
+
+model EnrollmentToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  userId    String
+  purpose   String   @default("INITIAL_ENROLLMENT")
+
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model EnrollmentState {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  passwordEnrolled   Boolean  @default(false)
+  faceEnrolled       Boolean  @default(false)
+  voiceEnrolled      Boolean  @default(false)
+  recoveryConfigured Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+
+  user               User     @relation(fields: [userId], references: [id])
+}
+
+model BehavioralProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  avgTypingSpeed  Float?
+  avgFlightTime   Float?
+  mouseEfficiency Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user            User     @relation(fields: [userId], references: [id])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model TotpSecret {
+  id     String @id @default(uuid())
+  userId String @unique
+  secret String
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model WebAuthnCredential {
+  id           String @id @default(uuid())
+  userId       String
+  credentialId String @unique
+  publicKey    String
+  counter      Int
+  transports   String?
+  user         User   @relation(fields: [userId], references: [id])
+}
+
+model AuthSession {
+  id               String    @id @default(uuid())
+  userId           String
+  ipAddress        String
+  device             String
+  riskLevel          String?
+  identityConfidence Float?
+  trustState         String?
+  status             String    @default("ACTIVE")
+  mfaUsed            String?
+  mfaRequired        Boolean   @default(false)
+  isSuccessful     Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  expiresAt        DateTime? @map("expires_at")
+  refreshTokenHash String?   @map("refresh_token_hash")
+  previousRefreshTokenHash String? @map("previous_refresh_token_hash")
+  
+  // New Session Fields
+  userAgent        String?
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  
+  // New Biometric Monitoring Fields
+  biometricScore   Float?
+  biometricType    String?
+
+  user User @relation(fields: [userId], references: [id])
+  livenessChallenges LivenessChallenge[]
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model SecurityEvent {
+  id          String   @id @default(uuid())
+  userId      String?
+  severity    String
+  description String
+  resolved    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+}
+
+model BiometricProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  
+  faceTemplate       String?  // Encrypted vector
+  voiceTemplate      String?
+  fingerprintTemplate String? // Optional (simulated)
+
+  faceSalt           String?
+  voiceSalt          String?
+  fingerprintSalt    String?
+
+  createdAt          DateTime @default(now())
+
+  user               User     @relation(fields: [userId], references: [id])
+}
+
+enum Role {
+  USER
+  ADMIN
+  PRIMARY_ADMIN
+}
+
+enum AccountStatus {
+  ENROLLMENT_REQUIRED
+  ACTIVE
+  DISABLED
+  LOCKED
+  RECOVERY_REQUIRED
+}
+
+model TrustEvent {
+  id              String   @id @default(uuid())
+  userId          String
+  previousState   String
+  newState        String
+  reason          String?
+  confidenceScore Float?
+  riskLevel       String?
+  createdAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model SecurityConfiguration {
+  id                  String   @id @default(uuid())
+  version             Int      @default(1)
+  passwordPolicy      Json?
+  maxFailedAttempts   Int      @default(5)
+  lockoutDurationMins Int      @default(15)
+  updatedAt           DateTime @updatedAt
+}
+
+model FusionConfiguration {
+  id                     String   @id @default(uuid())
+  version                Int      @default(1)
+  faceWeight             Float    @default(0.4)
+  voiceWeight            Float    @default(0.3)
+  behaviorWeight         Float    @default(0.2)
+  deviceWeight           Float    @default(0.1)
+  minimumFaceConfidence  Float    @default(0.7)
+  minimumVoiceConfidence Float    @default(0.7)
+  signalExpirySeconds    Int      @default(300)
+  updatedAt              DateTime @updatedAt
+}
+
+model LivenessChallenge {
+  id          String   @id @default(uuid())
+  nonce       String   @unique
+  sequence    String   // JSON stringified array of challenge strings e.g. ["BLINK", "TURN_LEFT"]
+  expiresAt   DateTime
+  isConsumed  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  userId      String?
+  sessionId   String?
+
+  user        User?        @relation(fields: [userId], references: [id])
+  session     AuthSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+  @@index([nonce])
+}
+
